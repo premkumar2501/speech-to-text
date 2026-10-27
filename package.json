@@ -1,0 +1,32 @@
+{
+  "name": "speech-to-text",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/premkumar2501/speech-to-text.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/premkumar2501/speech-to-text/issues"
+  },
+  "homepage": "https://github.com/premkumar2501/speech-to-text#readme",
+  "dependencies": {
+    "@google/genai": "^2.31.0",
+    "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "prisma": "^8.0.0-rc.27",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
