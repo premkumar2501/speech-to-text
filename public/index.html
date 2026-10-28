@@ -109,6 +109,10 @@
         color: #b42318;
       }
 
+      #history-status[data-kind="error"] {
+        color: #b42318;
+      }
+
       h2 {
         margin: 32px 0 12px;
         font-size: 1rem;
@@ -124,6 +128,101 @@
         line-height: 1.7;
         overflow-wrap: anywhere;
         white-space: pre-wrap;
+      }
+
+      .history-panel {
+        margin-top: 24px;
+      }
+
+      .history-heading,
+      .history-card-heading,
+      .history-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .history-heading h2 {
+        margin: 0;
+      }
+
+      #history-status,
+      .history-date {
+        color: #687187;
+        font-size: 0.9rem;
+      }
+
+      #history-list {
+        display: grid;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .history-card {
+        padding: 18px;
+        border: 1px solid #e3e7f0;
+        border-radius: 12px;
+        background: #fafbfe;
+      }
+
+      .history-card h3 {
+        margin: 0;
+        font-size: 1rem;
+        overflow-wrap: anywhere;
+      }
+
+      .history-date {
+        margin: 6px 0 12px;
+      }
+
+      .history-text {
+        margin: 0;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .history-card input,
+      .history-card textarea {
+        width: 100%;
+        margin: 8px 0;
+        padding: 10px 12px;
+        border: 1px solid #cfd5e3;
+        border-radius: 8px;
+        color: inherit;
+        font: inherit;
+      }
+
+      .history-card textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      button.secondary {
+        min-height: 38px;
+        padding: 0 14px;
+        color: #344054;
+        background: #e9ecf4;
+      }
+
+      button.secondary:hover:not(:disabled) {
+        background: #dce1ed;
+      }
+
+      button.danger {
+        color: #b42318;
+        background: #fee4e2;
+      }
+
+      button.danger:hover:not(:disabled) {
+        background: #fecdca;
+      }
+
+      button.small {
+        min-height: 34px;
+        padding: 0 12px;
+        font-size: 0.88rem;
       }
 
       @media (max-width: 520px) {
@@ -157,6 +256,14 @@
         </div>
         <h2 id="transcript-heading">Live transcript</h2>
         <div id="transcript" aria-live="polite" aria-atomic="false"></div>
+      </section>
+
+      <section class="panel history-panel" aria-labelledby="history-heading">
+        <div class="history-heading">
+          <h2 id="history-heading">Transcription history</h2>
+          <p id="history-status" role="status" aria-live="polite">Loading history...</p>
+        </div>
+        <div id="history-list" aria-live="polite"></div>
       </section>
     </main>
     <script type="module" src="/recorder.js"></script>

@@ -6,7 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   },
   "repository": {
     "type": "git",
@@ -21,11 +26,12 @@
   "homepage": "https://github.com/premkumar2501/speech-to-text#readme",
   "dependencies": {
     "@google/genai": "^2.31.0",
+    "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
     "pg": "^8.23.1",
-    "prisma": "^8.0.0-rc.27",
+    "prisma": "^7.10.1",
     "ws": "^8.22.0"
   },
   "devDependencies": {

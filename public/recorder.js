@@ -1,6 +1,8 @@
 const button = document.querySelector("#record-button");
 const status = document.querySelector("#status");
 const transcript = document.querySelector("#transcript");
+const historyList = document.querySelector("#history-list");
+const historyStatus = document.querySelector("#history-status");
 
 let socket;
 let audioContext;
@@ -11,10 +13,140 @@ let isRecording = false;
 let isStopping = false;
 let chunksSent = 0;
 let stopTimeout;
+let currentTranscript = "";
 
 function setStatus(message, kind = "normal") {
   status.textContent = message;
   status.dataset.kind = kind;
+}
+
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || `Request failed (${response.status}).`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+function setHistoryStatus(message, kind = "normal") {
+  historyStatus.textContent = message;
+  historyStatus.dataset.kind = kind;
+}
+
+function makeHistoryButton(label, className, onClick) {
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = className;
+  action.textContent = label;
+  action.addEventListener("click", onClick);
+  return action;
+}
+
+function renderHistory(items) {
+  historyList.replaceChildren();
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "history-date";
+    empty.textContent = "No saved transcriptions yet. Finish a recording to add one.";
+    historyList.append(empty);
+    return;
+  }
+
+  for (const item of items) {
+    const card = document.createElement("article");
+    card.className = "history-card";
+
+    const heading = document.createElement("div");
+    heading.className = "history-card-heading";
+    const title = document.createElement("h3");
+    title.textContent = item.title;
+    heading.append(title);
+
+    const date = document.createElement("p");
+    date.className = "history-date";
+    date.textContent = `Saved ${new Date(item.createdAt).toLocaleString()}`;
+
+    const text = document.createElement("p");
+    text.className = "history-text";
+    text.textContent = item.text;
+
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+    const edit = makeHistoryButton("Edit", "secondary small", () => editHistoryItem(item, card));
+    const remove = makeHistoryButton("Delete", "danger small", async () => {
+      if (!window.confirm(`Delete “${item.title}”? This cannot be undone.`)) return;
+      remove.disabled = true;
+      try {
+        await apiRequest(`/api/transcriptions/${item.id}`, { method: "DELETE" });
+        await loadHistory("Transcription deleted.");
+      } catch (error) {
+        setHistoryStatus(error.message, "error");
+        remove.disabled = false;
+      }
+    });
+    actions.append(edit, remove);
+    card.append(heading, date, text, actions);
+    historyList.append(card);
+  }
+}
+
+async function loadHistory(message = "") {
+  setHistoryStatus("Loading history...");
+  try {
+    const items = await apiRequest("/api/transcriptions");
+    renderHistory(items);
+    setHistoryStatus(message || `${items.length} saved transcription${items.length === 1 ? "" : "s"}`);
+  } catch (error) {
+    historyList.replaceChildren();
+    setHistoryStatus(error.message, "error");
+  }
+}
+
+function editHistoryItem(item, card) {
+
+  const titleInput = document.createElement("input");
+  titleInput.type = "text";
+  titleInput.maxLength = 200;
+  titleInput.value = item.title;
+  titleInput.setAttribute("aria-label", "Transcription title");
+
+  const textInput = document.createElement("textarea");
+  textInput.maxLength = 100_000;
+  textInput.value = item.text;
+  textInput.setAttribute("aria-label", "Transcript text");
+
+  const actions = document.createElement("div");
+  actions.className = "history-actions";
+  const save = makeHistoryButton("Save changes", "small", async () => {
+    save.disabled = true;
+    try {
+      await apiRequest(`/api/transcriptions/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: titleInput.value, text: textInput.value }),
+      });
+      await loadHistory("Changes saved.");
+    } catch (error) {
+      setHistoryStatus(error.message, "error");
+      save.disabled = false;
+    }
+  });
+  const cancel = makeHistoryButton("Cancel", "secondary small", () => loadHistory());
+  actions.append(save, cancel);
+
+  const date = card.querySelector(".history-date");
+  const oldText = card.querySelector(".history-text");
+  const oldActions = card.querySelector(".history-actions");
+  date.after(titleInput, textInput);
+  oldText.remove();
+  oldActions.replaceWith(actions);
+  card.querySelector("h3").remove();
 }
 
 // Message content change to object with type and text properties
@@ -75,15 +207,34 @@ function stopAudio() {
   audioContext = undefined;
 }
 
-function finishStop() {
+async function finishStop() {
+  const savedText = currentTranscript.trim();
   window.clearTimeout(stopTimeout);
   stopAudio();
   if (socket?.readyState === WebSocket.OPEN) socket.close();
   socket = undefined;
   isStopping = false;
-  button.disabled = false;
   button.textContent = "Start recording";
-  setStatus("Recording stopped.");
+  if (!savedText) {
+    button.disabled = false;
+    setStatus("Recording stopped. No transcript was produced.");
+    return;
+  }
+
+  button.disabled = true;
+  setStatus("Recording stopped. Saving transcription...");
+  try {
+    await apiRequest("/api/transcriptions", {
+      method: "POST",
+      body: JSON.stringify({ text: savedText }),
+    });
+    setStatus("Recording stopped. Transcription saved to history.");
+    await loadHistory("Transcription saved.");
+  } catch (error) {
+    setStatus(`Recording stopped, but it could not be saved: ${error.message}`, "error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function handleSocketMessage(event) {
@@ -92,6 +243,7 @@ function handleSocketMessage(event) {
 
   switch (message.type) {
     case "transcript":
+      currentTranscript += message.text;
       transcript.textContent += message.text;
       break;
     case "audio_received":
@@ -132,6 +284,8 @@ function handleSocketMessage(event) {
 
 async function startRecording() {
   button.disabled = true;
+  currentTranscript = "";
+  transcript.textContent = "";
   setStatus("Connecting to the speech service...");
 
   try {
@@ -240,3 +394,5 @@ button.addEventListener("click", () => {
     void startRecording();
   }
 });
+
+void loadHistory();
